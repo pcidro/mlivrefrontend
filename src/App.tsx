@@ -10,6 +10,14 @@ const API_URL = (
 type Screen = 'login' | 'marketplace'
 type ConnectionStatus = 'success' | 'error' | null
 
+interface MarketplaceAccount {
+  id: string
+  platform: 'MERCADO_LIVRE' | 'MAGALU'
+  name: string
+  externalAccountId: string
+  isActive: boolean
+}
+
 function getInitialConnectionStatus(): ConnectionStatus {
   const status = new URLSearchParams(window.location.search).get(
     'mercadolivre',
@@ -38,12 +46,62 @@ function App() {
   const [userName, setUserName] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [accounts, setAccounts] = useState<MarketplaceAccount[]>([])
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
+  const [accountError, setAccountError] = useState('')
+  const [disconnectingAccountId, setDisconnectingAccountId] = useState('')
+  const [disconnectSuccess, setDisconnectSuccess] = useState(false)
 
   useEffect(() => {
     if (connectionStatus) {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [connectionStatus])
+
+  useEffect(() => {
+    if (screen !== 'marketplace') return
+
+    const abortController = new AbortController()
+
+    async function loadAccounts() {
+      setIsLoadingAccounts(true)
+      setAccountError('')
+
+      try {
+        const response = await fetch(`${API_URL}/marketplace-accounts`, {
+          credentials: 'include',
+          signal: abortController.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response))
+        }
+
+        const body = (await response.json()) as {
+          data: MarketplaceAccount[]
+        }
+        setAccounts(body.data.filter((account) => account.isActive))
+      } catch (caughtError) {
+        if (caughtError instanceof DOMException && caughtError.name === 'AbortError') {
+          return
+        }
+
+        setAccountError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'Não foi possível consultar as contas conectadas.',
+        )
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoadingAccounts(false)
+        }
+      }
+    }
+
+    void loadAccounts()
+
+    return () => abortController.abort()
+  }, [screen])
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -83,6 +141,45 @@ function App() {
     window.location.assign(
       `${API_URL}/marketplace-accounts/mercadolivre/connect`,
     )
+  }
+
+  async function disconnectMercadoLivre(account: MarketplaceAccount) {
+    const confirmed = window.confirm(
+      `Deseja desconectar a conta "${account.name}" do Mercado Livre?`,
+    )
+
+    if (!confirmed) return
+
+    setAccountError('')
+    setDisconnectSuccess(false)
+    setDisconnectingAccountId(account.id)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/marketplace-accounts/mercadolivre/${account.id}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response))
+      }
+
+      setAccounts((currentAccounts) =>
+        currentAccounts.filter((currentAccount) => currentAccount.id !== account.id),
+      )
+      setDisconnectSuccess(true)
+    } catch (caughtError) {
+      setAccountError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'Não foi possível desconectar a conta.',
+      )
+    } finally {
+      setDisconnectingAccountId('')
+    }
   }
 
   return (
@@ -172,6 +269,19 @@ function App() {
               </div>
             )}
 
+            {disconnectSuccess && (
+              <div className="message message-success" role="status">
+                Conta desconectada. Antes de conectar outra conta, saia da sua
+                sessão no site do Mercado Livre.
+              </div>
+            )}
+
+            {accountError && (
+              <div className="message message-error" role="alert">
+                {accountError}
+              </div>
+            )}
+
             <div className="marketplace-box">
               <div className="marketplace-title">
                 <span className="mercado-livre-icon" aria-hidden="true">
@@ -183,12 +293,41 @@ function App() {
                 </div>
               </div>
 
+              {isLoadingAccounts ? (
+                <p className="accounts-status">Consultando contas...</p>
+              ) : (
+                accounts
+                  .filter((account) => account.platform === 'MERCADO_LIVRE')
+                  .map((account) => (
+                    <div className="connected-account" key={account.id}>
+                      <div>
+                        <strong>{account.name}</strong>
+                        <span>Conta #{account.externalAccountId}</span>
+                      </div>
+                      <button
+                        className="disconnect-button"
+                        type="button"
+                        disabled={disconnectingAccountId === account.id}
+                        onClick={() => void disconnectMercadoLivre(account)}
+                      >
+                        {disconnectingAccountId === account.id
+                          ? 'Desconectando...'
+                          : 'Desconectar'}
+                      </button>
+                    </div>
+                  ))
+              )}
+
               <button
                 className="marketplace-button"
                 type="button"
                 onClick={connectMercadoLivre}
               >
-                Conectar ao Mercado Livre
+                {accounts.some(
+                  (account) => account.platform === 'MERCADO_LIVRE',
+                )
+                  ? 'Conectar outra conta'
+                  : 'Conectar ao Mercado Livre'}
               </button>
             </div>
 

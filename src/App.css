@@ -192,6 +192,52 @@ button:disabled {
   background: #f5dc00;
 }
 
+.accounts-status {
+  margin: 18px 0 0;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.connected-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: 9px;
+  background: #ecfdf5;
+}
+
+.connected-account strong,
+.connected-account span {
+  display: block;
+}
+
+.connected-account strong {
+  color: #065f46;
+}
+
+.connected-account span {
+  margin-top: 3px;
+  color: #477165;
+  font-size: 0.78rem;
+}
+
+.disconnect-button {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.disconnect-button:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
 .security-note {
   margin: 18px 0 0;
   color: #667085;
@@ -209,5 +255,10 @@ button:disabled {
   .card {
     padding: 24px 20px;
     border-radius: 12px;
+  }
+
+  .connected-account {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
