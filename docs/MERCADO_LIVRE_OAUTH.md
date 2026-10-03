@@ -71,6 +71,22 @@ npm run diagnose:mercadolivre -- --probe
 
 O comando usa as credenciais do ambiente onde é executado, não depende de cookies do navegador e não utiliza uma autorização real. A chamada tem timeout de 15 segundos, não segue redirecionamentos e não persiste tokens. Se ocorrer uma resposta de sucesso inesperada, descarta as credenciais recebidas e exibe apenas `unexpectedAcceptance`.
 
+#### Render gratuito: executar pelo Start Command
+
+O plano gratuito não oferece Shell/SSH. Não é necessário fazer upgrade para esse diagnóstico. Depois de publicar o backend atualizado (build normal com `npm run build`), abra **Render → `sistemamlivre` → Settings → Start Command** e substitua temporariamente `npm run start` por:
+
+```sh
+npm run start:diagnose:mercadolivre
+```
+
+Salve e faça o deploy. A inicialização executa uma chamada de diagnóstico com código fictício, imprime uma linha `mercadolivre_oauth_diagnostic` nos **Logs** e inicia o backend. Uma recusa esperada da API é registrada e não impede a inicialização. O timeout de 15 segundos limita a espera. A chamada usa as mesmas variáveis que o servidor iniciado em seguida.
+
+Copie somente a linha `mercadolivre_oauth_diagnostic` para comparar com o teste local. Depois da coleta, volte o **Start Command** para `npm run start` e salve. Enquanto estiver selecionado o comando de diagnóstico, cada reinicialização executará uma nova chamada.
+
+O script e a entrada `start:diagnose:mercadolivre` precisam estar no código publicado; alterar apenas o Start Command com uma versão antiga provocará erro de script ausente. Não colocar chaves no Start Command.
+
+#### Planos com Shell disponível
+
 Após publicar e compilar o backend, execute em **Render → serviço `sistemamlivre` → Shell**, na pasta do backend:
 
 ```sh
@@ -122,3 +138,5 @@ Fontes oficiais:
 
 - [Autenticação e autorização](https://developers.mercadolivre.com.br/pt_br/mensagens-post-venda/autenticacao-e-autorizacao)
 - [Realização de testes](https://developers.mercadolivre.com.br/pt_br/realizacao-de-testes/realizacao-de-testes)
+- [Shell e SSH no Render](https://render.com/docs/ssh)
+- [Start Command de Web Services](https://render.com/docs/web-services)
