@@ -1,0 +1,20 @@
+services:
+  - type: web
+    runtime: static
+    name: mlivrefrontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: /api
+    headers:
+      - path: /api/*
+        name: Cache-Control
+        value: private, no-store
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://sistemamlivre.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html

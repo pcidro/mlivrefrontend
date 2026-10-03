@@ -4,9 +4,9 @@ import { customersService } from '../services/customersService'
 import type { CustomerFilters } from '../types/customer'
 
 export function useCustomers(filters: CustomerFilters) {
-  const { page, limit, search, marketplaceAccountId, hasPhone, dateFrom, dateTo } = filters
+  const { page, limit, search, platform, marketplaceAccountId, hasPhone, dateFrom, dateTo } = filters
   const load = useCallback((signal: AbortSignal) => customersService.list({
-    page, limit, search, marketplaceAccountId, hasPhone, dateFrom, dateTo,
-  }, signal), [page, limit, search, marketplaceAccountId, hasPhone, dateFrom, dateTo])
+    page, limit, search, platform, marketplaceAccountId, hasPhone, dateFrom, dateTo,
+  }, signal), [page, limit, search, platform, marketplaceAccountId, hasPhone, dateFrom, dateTo])
   return useResource(load)
 }

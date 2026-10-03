@@ -16,8 +16,13 @@ function ProtectedRoute() {
 }
 function HomeRedirect() {
   const location = useLocation()
-  const status = new URLSearchParams(location.search).get('mercadolivre')
-  return <Navigate to={status === 'success' || status === 'error' ? `/marketplace-accounts?mercadolivre=${status}` : '/dashboard'} replace />
+  const params = new URLSearchParams(location.search)
+  const status = params.get('mercadolivre')
+  if (status !== 'success' && status !== 'error') return <Navigate to="/dashboard" replace />
+  const result = new URLSearchParams({ mercadolivre: status })
+  const reason = params.get('mercadolivre_error')
+  if (status === 'error' && reason) result.set('mercadolivre_error', reason)
+  return <Navigate to={`/marketplace-accounts?${result}`} replace />
 }
 export function AppRouter() {
   // Os campos controlados pelos filtros da URL precisam atualizar junto com a digitação.

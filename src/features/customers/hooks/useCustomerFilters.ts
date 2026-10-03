@@ -7,10 +7,12 @@ export function useCustomerFilters() {
   const [params, setParams] = useSearchParams()
   const page = Number(params.get('page')) || 1
   const hasPhone = params.get('hasPhone')
+  const platform = params.get('platform')
   const filters: CustomerFilters = {
     page: Number.isSafeInteger(page) && page > 0 && page <= 100_000 ? page : 1,
     limit: 20,
     search: (params.get('search') ?? '').slice(0, 200),
+    platform: platform === 'MERCADO_LIVRE' || platform === 'MAGALU' ? platform : '',
     marketplaceAccountId: params.get('marketplaceAccountId') ?? '',
     hasPhone: hasPhone === 'true' || hasPhone === 'false' ? hasPhone : '',
     dateFrom: validDate(params.get('dateFrom')), dateTo: validDate(params.get('dateTo')),

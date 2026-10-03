@@ -10,6 +10,19 @@ test('query params preservam false, zero, caracteres especiais e omitem ausentes
   assert.equal(query.has('empty'), false)
 })
 
+test('API relativa preserva origem, caminhos, filtros e navegação OAuth pelo proxy', async () => {
+  const urls: string[] = []
+  const api = createApiClient('/api', () => {}, async (url, options) => {
+    urls.push(String(url))
+    assert.equal(options?.credentials, 'include')
+    return Response.json({ id: 'user-test' })
+  })
+  await api.post('/auth/login', { email: 'pessoa@example.com', password: 'senha-ficticia' })
+  await api.get('/customers', { params: { search: 'Maria', page: 2 } })
+  assert.deepEqual(urls, ['/api/auth/login', '/api/customers?search=Maria&page=2'])
+  assert.equal(api.url('/marketplace-accounts/mercadolivre/connect'), '/api/marketplace-accounts/mercadolivre/connect')
+})
+
 test('cliente HTTP sempre envia cookie, serializa JSON e aceita logout 204', async () => {
   const requests: RequestInit[] = []
   const api = createApiClient('https://example.test/api/', () => {}, async (_url, options) => {
@@ -30,6 +43,17 @@ test('401 expira sessão centralmente, exceto erro de credenciais no login', asy
   assert.equal(expires, 1)
   await assert.rejects(api.post('/auth/login', {}, { notifyUnauthorized: false }), /E-mail ou senha incorretos/)
   assert.equal(expires, 1)
+})
+
+test('verificação de sessão pode ignorar cache e não disparar expiração durante o login', async () => {
+  let expires = 0
+  const api = createApiClient('https://example.test/api', () => { expires++ }, async (_url, options) => {
+    assert.equal(options?.credentials, 'include')
+    assert.equal(options?.cache, 'no-store')
+    return new Response(null, { status: 401 })
+  })
+  await assert.rejects(api.get('/auth/me', { cache: 'no-store', notifyUnauthorized: false }), (error) => error instanceof ApiError && error.status === 401)
+  assert.equal(expires, 0)
 })
 
 test('resposta inválida e falha de rede produzem erros tipados sem detalhes internos', async () => {

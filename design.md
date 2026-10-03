@@ -6,7 +6,11 @@ Este arquivo é a referência visual e técnica para o frontend da aplicação *
 
 A implementação deve reproduzir a linguagem visual da interface de referência fornecida, sem copiar cegamente cada pixel. O objetivo é manter a mesma sensação de produto: **dashboard SaaS profissional, claro, organizado, moderno, denso o suficiente para uso operacional e simples para uma usuária não técnica**.
 
-Neste momento, a aplicação deve considerar **somente Mercado Livre**. Não exibir Magalu, Shopee ou qualquer outra plataforma em textos, filtros, cards, logos, mocks ou estados da interface.
+Atualização de escopo: **Dashboard, Clientes, Contas Integradas e Importações**
+incluem Mercado Livre e Magalu, com os mesmos cards, badges, cores e estados
+descritos aqui. Reutilizar componentes e distinguir as plataformas por rótulos
+e badges consistentes.
+Não exibir Shopee ou outras plataformas futuras.
 
 ---
 
@@ -225,7 +229,7 @@ Esquerda:
 
 ```text
 [ícone] Central de Clientes
-        Integração com Mercado Livre
+        Clientes de marketplaces
 ```
 
 Direita:
@@ -236,7 +240,7 @@ Direita:
 - empresa ou papel;
 - chevron para menu.
 
-Não exibir "Magalu" no subtítulo.
+Quando houver subtítulo de integrações, ele deve contemplar ambas as plataformas.
 
 ### Visual
 
@@ -300,6 +304,9 @@ Hoje, 10:42
 ### Regras
 
 - Dados devem vir da API quando endpoint existir.
+- Manter os quatro cards e apresentar as contagens Mercado Livre e Magalu no card de total.
+- As contagens por plataforma podem incluir o mesmo cliente; não calcular Magalu por subtração do total.
+- Se a contagem complementar falhar, mostrar "Indisponível", mantendo os totais disponíveis.
 - Não inventar porcentagens de crescimento se backend não fornecer.
 - Se não houver comparação histórica, remover o `+12%` e similares do mock de referência.
 - Loading: skeleton.
@@ -311,7 +318,7 @@ Hoje, 10:42
 
 ### Objetivo
 
-Mostrar as contas Mercado Livre conectadas.
+Mostrar as contas Mercado Livre e Magalu conectadas.
 
 ### Cabeçalho
 
@@ -319,13 +326,13 @@ Esquerda:
 
 ```text
 Contas integradas
-Gerencie as contas conectadas ao Mercado Livre.
+Gerencie suas contas conectadas ao Mercado Livre e à Magalu.
 ```
 
 Direita:
 
 ```text
-[ + Conectar Mercado Livre ]
+[ + Conectar Mercado Livre ] [ + Conectar Magalu ]
 ```
 
 ou, se fluxo principal for importação:
@@ -359,8 +366,8 @@ Não mostrar token, refresh token ou qualquer credencial.
 Sem conta:
 
 ```text
-Nenhuma conta do Mercado Livre conectada.
-[ Conectar Mercado Livre ]
+Nenhuma conta conectada.
+[ Conectar Mercado Livre ] [ Conectar Magalu ]
 ```
 
 Erro:
@@ -390,7 +397,7 @@ Esta é a área operacional principal da aplicação.
 
 ```text
 Clientes   ⓘ
-Os contatos são obtidos a partir das notas fiscais e dados disponíveis no Mercado Livre.
+Contatos obtidos das notas fiscais e dos dados disponíveis no Mercado Livre e na Magalu.
 ```
 
 ### Filtros
@@ -398,11 +405,14 @@ Os contatos são obtidos a partir das notas fiscais e dados disponíveis no Merc
 Linha desktop:
 
 1. Search input
-2. Conta/CNPJ
-3. Período
-4. Opcional: status do telefone
+2. Plataforma: Todas, Mercado Livre, Magalu
+3. Conta/CNPJ
+4. Período
+5. Opcional: status do telefone
 
-Como existe apenas Mercado Livre neste momento, **não criar filtro de plataforma**.
+"Todas" é o padrão. Identificar as contas por plataforma e nome. Ao trocar a
+plataforma, limpar a seleção de conta e retornar à primeira página. Filtrar as
+contas disponíveis conforme a plataforma, mantendo a busca e o período.
 
 #### Campo de busca
 
@@ -437,18 +447,18 @@ A tab ativa usa azul primário.
 1. Nome
 2. CPF/CNPJ
 3. Telefone
-4. Conta
-5. Pedido
-6. Data
-7. Ação
-8. Menu `...` opcional
+4. Plataforma
+5. Conta
+6. Pedido
+7. Data
+8. Ação
 
-Não criar coluna Plataforma enquanto só houver Mercado Livre.
+Usar o badge compartilhado: Mercado Livre neutro; Magalu azul primário.
 
 ### Exemplo
 
 ```text
-Maria Silva | 123.456.789-00 | (11) 99999-9999 | CNPJ 01 | #ML-10234 | 29/09/2026 | WhatsApp
+Maria Silva | 123.456.789-00 | (11) 99999-9999 | Mercado Livre | CNPJ 01 | #ML-10234 | 29/09/2026 | WhatsApp
 ```
 
 ### Telefone inexistente
@@ -525,6 +535,7 @@ Query params sugeridos:
 &limit=20
 &search=
 &hasPhone=
+&platform=
 &marketplaceAccountId=
 &dateFrom=
 &dateTo=
@@ -566,12 +577,15 @@ Mostrar somente o que existe:
 
 - CPF/CNPJ
 - Telefone
+- Plataforma
 - Conta/CNPJ de origem
 - Pedido
 - Data da venda
 - Status do telefone
 
-Não mostrar "Plataforma" enquanto só houver Mercado Livre, a menos que esse campo já seja essencial no backend; nesse caso pode aparecer como informação secundária, mas nunca como filtro principal.
+Preservar a plataforma, conta, pedido e data da linha selecionada. A consulta por
+ID pode retornar outra venda mais recente do mesmo cliente; ela atualiza os dados
+do cliente sem substituir a origem exibida na lista filtrada.
 
 ### Botão principal
 
@@ -627,7 +641,7 @@ Permitir iniciar importação e acompanhar histórico.
 
 Campos:
 
-- Conta Mercado Livre
+- Conta integrada, identificando Mercado Livre ou Magalu e o nome da loja
 - Data inicial
 - Data final
 - botão `Importar clientes`
@@ -663,12 +677,18 @@ Tabela/cards com:
 
 - Data
 - Conta
+- Plataforma (Mercado Livre ou Magalu)
 - Status
 - Pedidos encontrados
 - Processados
 - Com telefone
 - Sem telefone
 - Erros
+
+O frontend atual lista as execuções realizadas na sessão, preservadas durante a
+navegação e identificadas pela plataforma/conta selecionada. O backend ainda não
+possui rota de leitura do histórico persistido; não inventar endpoints nem usar
+dados fictícios para preencher essa lista. Recarregar encerra esse histórico local.
 
 Status:
 
@@ -686,17 +706,18 @@ Status:
 Estado vazio central:
 
 ```text
-Conecte sua conta do Mercado Livre
+Conecte uma conta de Mercado Livre ou Magalu
 para começar a importar seus clientes.
 
-[ Conectar Mercado Livre ]
+[ Conectar Mercado Livre ] [ Conectar Magalu ]
 ```
 
 ### Conta conectada
 
 Mostrar card com:
 
-- logo Mercado Livre;
+- logo Mercado Livre ou identificação visual Magalu;
+- badge da plataforma;
 - nome da conta;
 - CNPJ se disponível;
 - status;
@@ -919,7 +940,7 @@ Faça uma importação ou altere os filtros.
 Exemplo conta:
 
 ```text
-Nenhuma conta do Mercado Livre conectada.
+Nenhuma conta conectada.
 ```
 
 ---
@@ -1021,7 +1042,7 @@ Não repetir lógica de formatação em vários componentes.
 
 O frontend nunca deve:
 
-- receber access token do Mercado Livre;
+- receber access token de qualquer marketplace;
 - receber refresh token;
 - exibir secrets;
 - armazenar JWT sensível no localStorage quando cookie HttpOnly estiver sendo usado;
@@ -1053,6 +1074,8 @@ Evitar `console.log` com objetos inteiros de cliente em produção.
 - Contas Integradas.
 - Configurações básicas.
 - Mercado Livre.
+- Magalu.
+- Coluna e filtro de plataforma.
 - Nome do cliente.
 - CPF/CNPJ.
 - Telefone.
@@ -1063,11 +1086,9 @@ Evitar `console.log` com objetos inteiros de cliente em produção.
 
 ### NÃO deve existir ainda
 
-- Magalu.
 - Shopee.
 - Filtro de plataforma com opções futuras.
 - Logos de plataformas não implementadas.
-- Textos dizendo "Mercado Livre e Magalu".
 - Envio automático de WhatsApp.
 - Campanhas.
 - Disparo em massa.
@@ -1090,7 +1111,7 @@ A interface será considerada alinhada ao design quando:
 7. drawer lateral permitir consultar cliente sem sair da lista;
 8. cores forem sóbrias e profissionais;
 9. interface funcionar bem em desktop e tablet;
-10. nenhum elemento da Magalu aparecer nesta versão.
+10. as duas plataformas forem identificadas consistentemente na lista, filtros, contas e detalhes.
 
 ---
 
@@ -1111,5 +1132,5 @@ A implementação deverá:
 - usar `credentials: 'include'` quando necessário;
 - ser responsiva;
 - ser acessível;
-- não expor credenciais do Mercado Livre;
-- não implementar Magalu.
+- não expor credenciais dos marketplaces;
+- manter OAuth no backend e compartilhar a ação WhatsApp usando `normalizedPhone`.

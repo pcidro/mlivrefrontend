@@ -10,7 +10,7 @@ import { Icon } from '../../../components/ui/Icon'
 
 export function DashboardPage() {
   const dashboard = useDashboard()
-  const accounts = useMarketplaceAccounts()
+  const accounts = useMarketplaceAccounts({ includeMagalu: true })
   return <div className="page-stack"><div className="page-heading"><div><h1>Dashboard</h1><p>Uma visão geral dos seus clientes e importações.</p></div><Link className="button button-primary" to="/imports"><Icon name="plus" />Nova importação</Link></div>
     {dashboard.loading ? <div className="summary-grid">{[1, 2, 3, 4].map((key) => <Card className="summary-card" key={key}><Skeleton rows={3} /></Card>)}</div>
       : dashboard.error ? <ErrorState message={dashboard.error} onRetry={dashboard.reload} /> : dashboard.data && <SummaryCards summary={dashboard.data} />}

@@ -10,7 +10,7 @@ Os arquivos de Mercado Livre em `public/brands/` são cópias sem alteração do
 
 ## Desenvolvimento
 
-Requer Node.js 24 e o backend disponível. Configure `VITE_API_URL` em um arquivo local de ambiente usando `.env.example` como referência. A URL inclui o prefixo `/api`, por exemplo `http://localhost:3333/api`. A origem do frontend precisa estar autorizada no CORS do backend.
+Requer Node.js 24 e o backend disponível. Use `VITE_API_URL=/api` em um arquivo local de ambiente, conforme `.env.example`. O navegador chama a mesma origem do frontend; o proxy do Vite encaminha `/api` para `API_PROXY_TARGET` (padrão `http://localhost:3333`, sem `/api`). A origem do frontend precisa estar autorizada no CORS do backend.
 
 ```sh
 npm install
@@ -19,11 +19,12 @@ npm run build
 npm run lint
 npm test
 npm run test:e2e
+npm run test:proxy
 ```
 
-Em desenvolvimento, o fallback é `http://localhost:3333/api`; em produção, o endereço de fallback já utilizado pelo projeto foi preservado. Se `.env` aponta para produção, configure `VITE_API_URL=http://localhost:3333/api` em `.env.development.local` (ignorado pelo Git) para usar o backend local sem alterar o build de produção. Reinicie o Vite após alterar variáveis de ambiente. A variável é incorporada durante o build e não pode conter secrets.
+O fallback do cliente HTTP é `/api` em desenvolvimento e produção. A variável `VITE_API_URL` é incorporada durante o build, não pode conter secrets e precisa permanecer `/api` no Render para usar o proxy. Uma URL completa do backend ainda é aceita para configurações explícitas, mas volta a depender de cookies entre sites diferentes. Reinicie o Vite após alterar variáveis locais.
 
-No Render Static Site, configure a regra de **Rewrite** de `/*` para `/index.html` para suportar acesso direto e atualização das rotas do React Router. A publicação não faz parte desta implementação.
+No Render Static Site, configure primeiro **Rewrite** de `/api/*` para `https://sistemamlivre.onrender.com/api/*`, depois **Rewrite** de `/*` para `/index.html`. A primeira encaminha a API no servidor; a segunda permite abrir/recarregar rotas do React Router. O [guia de publicação](docs/LOGIN_NO_IPHONE.md) contém variáveis, proteção de cache, callback OAuth e verificações. O [render.yaml](render.yaml) registra a configuração. Essas mudanças locais ainda precisam ser aplicadas nos serviços existentes.
 
 ## Estrutura
 
@@ -74,6 +75,18 @@ um canal direto de contato sobre privacidade. Usar a regra de rewrite do Render
 descrita acima para acesso direto e atualização dessas URLs.
 
 Sem uma sessão confirmada, a tela de login aparece desde o início. A consulta de sessão roda em segundo plano, com limite de 10 segundos. Falhas são exibidas no próprio login com opção de tentar novamente. Uma sessão válida recupera a página solicitada, incluindo o retorno OAuth. O envio do formulário aguarda essa verificação para evitar respostas concorrentes sobrescrevendo o login.
+
+Após a senha ser aceita, o frontend confirma o cookie em `GET /auth/me`, sem usar cache e com limite de 10 segundos, antes de abrir a área autenticada. Se essa consulta retornar 401, o formulário permanece visível com uma mensagem específica sobre a sessão. Isso evita mostrar o dashboard por um instante e voltar ao login quando o navegador não mantém o cookie. Não resolve, por si só, bloqueios de cookies de terceiros na hospedagem.
+
+### Login em celulares e domínios de produção
+
+O [WebKit bloqueia cookies de terceiros por padrão](https://webkit.org/tracking-prevention/). `SameSite=None; Secure` e `credentials: include` não anulam esse bloqueio. Se o frontend e a API estiverem em sites diferentes, a senha pode ser aceita no POST e o cookie não acompanhar as consultas seguintes, que retornam 401.
+
+Na configuração publicada verificada em 02/10/2026, `https://mlivrefrontend.onrender.com` usa `https://sistemamlivre.onrender.com/api`. Esses hosts são sites diferentes para cookies porque `onrender.com` consta na [Public Suffix List](https://github.com/publicsuffix/list/blob/master/public_suffix_list.dat). Compartilhar o sufixo do Render não elimina o bloqueio de cookies de terceiros no iPhone. A API respondeu com CORS autorizado para a origem exata do frontend e `Access-Control-Allow-Credentials: true`; isso não autoriza cookies bloqueados pelo navegador. A confirmação definitiva no dispositivo exige observar a consulta autenticada após login; uma consulta sem sessão retornar 401 é esperado.
+
+Nessa mesma verificação, `/` respondeu 200, mas os acessos diretos a `/login` e `/dashboard` responderam 404. No Static Site `mlivrefrontend`, configure **Redirects/Rewrites** com Source `/*`, Destination `/index.html` e Action **Rewrite**, conforme a [documentação do Render](https://render.com/docs/deploy-create-react-app). Isso permite abrir links internos e recarregar páginas; é um ajuste independente da sessão. O JavaScript publicado ainda não continha a mensagem da confirmação de sessão implementada localmente.
+
+O fluxo preparado agora usa `/api` no frontend e um Rewrite do Render para o backend, seguindo o princípio do Cats de manter o cookie no próprio site. Não requer domínio próprio, Next.js ou um serviço adicional. Login, sessão, logout, consultas e início OAuth passam pelo proxy; o callback do Mercado Livre também precisa usar o host do frontend para receber o cookie `ml_oauth_state`. Veja os valores exatos no [guia de publicação](docs/LOGIN_NO_IPHONE.md). O backend marca respostas `/api` com `private, no-store` para não armazenar sessões/dados no proxy.
 
 ## Componentes e hooks
 
@@ -135,6 +148,8 @@ O detalhe de cliente não fornece histórico de eventos, lista de pedidos ou dat
 `npm test` verifica formatação de CPF/CNPJ e telefone, geração segura do link WhatsApp, limites de datas e cliente HTTP (cookies, query params, JSON, 204, 401 e falhas de rede).
 
 `npm run test:e2e` inicia uma instância local isolada do Vite em `127.0.0.1:4173`, substitui explicitamente a URL da API e intercepta todos os endpoints com dados fictícios. Requisições para outras origens são bloqueadas. Testa login/restauração/logout, busca com debounce, filtros, paginação, drawer/foco/Escape, importação sem duplo envio, erros/vazio/401, OAuth/desconexão e telas desktop/tablet/mobile. Não acessa o banco nem o Mercado Livre.
+
+`npm run test:proxy` usa cookies reais em um servidor HTTP fictício atrás do proxy do Vite, sem interceptar fetch. Testa login, restauração após recarregar, logout, chamadas na origem do frontend e retorno OAuth de outro host local. Roda em desktop e viewport mobile no Edge/Chromium. A configuração do Render e o Safari real ainda precisam ser verificados depois da publicação.
 
 O navegador padrão dos testes é o Microsoft Edge instalado. Para outro ambiente, instale o Chromium do Playwright (`npx playwright install chromium`) e defina `PLAYWRIGHT_CHANNEL=chromium` antes de executar os testes. Capturas ficam em `test-results/`, ignorado pelo Git.
 

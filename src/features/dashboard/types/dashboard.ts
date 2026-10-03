@@ -4,5 +4,6 @@ export interface DashboardSummary {
   customersWithPhone: number
   customersWithoutPhone: number
   mercadoLivreCustomers: number
+  magaluCustomers: number | null
   lastImport: { startedAt: string; finishedAt: string | null; status: ImportStatus; ordersProcessed: number } | null
 }

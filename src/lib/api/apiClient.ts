@@ -12,6 +12,7 @@ export class ApiError extends Error {
 interface RequestOptions {
   params?: QueryParams
   signal?: AbortSignal
+  cache?: RequestCache
   notifyUnauthorized?: boolean
 }
 
@@ -29,7 +30,7 @@ export function createApiClient(baseUrl: string, onUnauthorized: () => void = ()
     let response: Response
     try {
       response = await fetchFn(`${base}${path}${queryString(options.params)}`, {
-        method, credentials: 'include', signal: options.signal,
+        method, credentials: 'include', signal: options.signal, cache: options.cache,
         headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       })
@@ -59,7 +60,7 @@ export function createApiClient(baseUrl: string, onUnauthorized: () => void = ()
 
 export const SESSION_EXPIRED_EVENT = 'central:session-expired'
 export const apiClient = createApiClient(
-  import.meta.env?.VITE_API_URL || (import.meta.env?.DEV ? 'http://localhost:3333/api' : 'https://sistemamlivre.onrender.com/api'),
+  import.meta.env?.VITE_API_URL || '/api',
   () => window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)),
 )
 

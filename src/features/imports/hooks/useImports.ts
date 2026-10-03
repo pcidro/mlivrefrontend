@@ -4,6 +4,7 @@ import type { ImportInput, ImportSummary } from '../types/import'
 export interface ImportsContextValue {
   processing: boolean
   result: ImportSummary | null
+  history: ImportSummary[]
   error: string
   start(input: ImportInput): Promise<void>
 }

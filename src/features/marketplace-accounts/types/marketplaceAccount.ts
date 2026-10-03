@@ -1,6 +1,6 @@
 export interface MarketplaceAccount {
   id: string
-  platform: 'MERCADO_LIVRE'
+  platform: 'MERCADO_LIVRE' | 'MAGALU'
   name: string
   cnpj: string | null
   externalAccountId: string
