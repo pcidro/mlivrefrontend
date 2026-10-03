@@ -43,6 +43,73 @@ Publique backend e frontend. Repita a conexão e procure nos logs do **backend**
 
 Valores de erro desconhecidos devolvidos pelo Mercado Livre são descartados. Erros de rede podem aparecer sem `upstreamStatus`; respostas recusadas preservam o status HTTP e apenas códigos reconhecidos. O diagnóstico identifica a etapa e não comprova sozinho a causa de um erro anterior.
 
+### `invalid_client` mesmo após recopiar as credenciais
+
+O HTTP 400 com `invalid_client` é a resposta da API do Mercado Livre à troca do código. Recopiar do histórico da conversa não confirma que o Secret continua vigente. Compare as credenciais atuais dentro do **mesmo aplicativo** que aparece na tela de autorização com as variáveis do backend.
+
+Nesse caso, o log inclui `credentialCheck`: ID público do aplicativo utilizado, tamanho do Secret e indicadores de espaços internos, aspas, máscara e caracteres fora de ASCII. Não inclui o Secret, partes dele ou hashes. `clientId` só é registrado quando tem formato numérico; um texto colado por engano nesse campo é omitido. Indicadores `false` não comprovam que as credenciais são válidas; somente descartam esses problemas de formatação.
+
+O erro `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` é separado: o Express recebia cabeçalhos do proxy com `trust proxy` desabilitado. O backend agora detecta o Render pela variável padrão `RENDER=true` e confia em um hop, antes dos limitadores. Fora do Render, os cabeçalhos encaminhados continuam sem confiança. A configuração considera o proxy mais próximo; uma cadeia adicional pode agrupar clientes e precisa ser verificada na infraestrutura antes de ampliar essa confiança.
+
+Publique o backend para ativar a correção do proxy e esse diagnóstico. No backend, `npm run test:proxy` verifica a confiança limitada e o funcionamento do rate limit; os testes usam apenas endereços fictícios.
+
+### Comparar o ambiente local com o Render sem revelar chaves
+
+No backend, foi adicionado um diagnóstico de configuração:
+
+```sh
+npm run diagnose:mercadolivre
+```
+
+Ele não chama APIs nem modifica contas. Retorna o ID público do aplicativo, indicadores de formatação do Secret, presença das variáveis e verificações do callback. Não imprime Secret, token, URL arbitrária ou fingerprint. Para a arquitetura atual, `callbackUsesFrontendOrigin`, `callbackUsesExpectedPath` e `callbackUsesHttps` devem ser `true`; `callbackHasQueryOrFragment` e `callbackHasUrlCredentials` devem ser `false`.
+
+Para fazer **uma chamada** de diagnóstico ao endpoint oficial `/oauth/token` com código propositalmente fictício:
+
+```sh
+npm run diagnose:mercadolivre -- --probe
+```
+
+O comando usa as credenciais do ambiente onde é executado, não depende de cookies do navegador e não utiliza uma autorização real. A chamada tem timeout de 15 segundos, não segue redirecionamentos e não persiste tokens. Se ocorrer uma resposta de sucesso inesperada, descarta as credenciais recebidas e exibe apenas `unexpectedAcceptance`.
+
+Após publicar e compilar o backend, execute em **Render → serviço `sistemamlivre` → Shell**, na pasta do backend:
+
+```sh
+node dist/scripts/diagnoseMercadoLivreOAuth.js --probe
+```
+
+Esse comando só estará disponível depois que o novo arquivo entrar no deploy. Executar localmente verifica o `.env` local, não as variáveis efetivas do Render. `dotenv/config` preserva variáveis já presentes no processo.
+
+Interpretação:
+
+| Resultado | Próximo passo |
+|---|---|
+| Local `invalid_grant`, Render `invalid_client` | Comparar o aplicativo e as variáveis efetivas do backend no Render, a versão publicada e o momento dos logs. É evidência de diferença entre ambientes; não informa sozinho qual variável está diferente. |
+| Ambos `invalid_grant` | A recusa do código fictício é esperada. Fazer uma nova autorização real e analisar seu log; o teste negativo não valida conta, permissões, PKCE, callback ou persistência. |
+| Ambos `invalid_client` | Conferir o par vigente do mesmo aplicativo e seu estado no painel. |
+| Sem `upstreamStatus` | Verificar comunicação, timeout ou configuração antes de atribuir o problema às chaves. |
+| `unauthorized_client` / `unauthorized_application` | Verificar permissões ou bloqueio do aplicativo. Esses códigos oficiais agora são preservados pelo diagnóstico. |
+
+Em 03/10/2026, o teste local com as credenciais configuradas retornou HTTP 400 `invalid_grant`. Uma chamada de controle com Secret propositalmente fictício retornou HTTP 400 `invalid_client`. Isso dá evidência de que a API distinguiu as credenciais locais do Secret inválido nesse teste. Não comprova que a configuração publicada é idêntica. Os logs fornecidos do Render retornaram `invalid_client` e não incluíram `credentialCheck`, presente no código local ainda não publicado.
+
+Também foi detectado que o `.env` local utiliza o domínio do backend no callback, enquanto a configuração documentada usa o domínio do frontend. Conferir a URL efetiva do Render e a cadastrada no Mercado Livre. Essa divergência local merece ajuste separado, mas não comprova a causa do `invalid_client` de produção. Não alterar apenas um lado: a URL cadastrada e a enviada precisam corresponder exatamente.
+
+### Registrar a navegação quando o Mercado Livre parece não abrir
+
+Abra as ferramentas do navegador, vá a **Network/Rede**, ative **Preserve log/Preservar registro** e **Disable cache/Desativar cache**, e só então clique novamente em **Conectar Mercado Livre**. Verifique a sequência de documentos:
+
+```text
+/api/marketplace-accounts/mercadolivre/connect
+→ auth.mercadolivre.com.br/authorization
+→ /api/marketplace-accounts/mercadolivre/callback
+→ tela do sistema
+```
+
+Se a chamada `/connect` retorna `302` com destino `auth.mercadolivre.com.br`, o sistema iniciou o redirecionamento. A sequência registrada permite verificar se o retorno ocorre rapidamente. Se retornar `401`, o problema é a sessão do sistema; `5xx` exige diagnóstico do backend. `token_exchange_failed` só é gerado depois da validação do retorno e da tentativa de troca do código; não é emitido pelo botão antes da autorização.
+
+Uma janela privada ajuda a separar a sessão existente do Mercado Livre de uma falha do backend. Entre no sistema e inicie pelo botão; não reutilize URLs antigas. Não compartilhar HAR, cookies, URLs completas do callback com `code`/`state` ou corpos de requisições de autenticação. Para diagnóstico, basta informar os domínios, caminhos, status e os campos seguros dos logs.
+
+Em 03/10/2026, as rotas públicas de conexão do frontend e do backend responderam `401` sem sessão, com `Cache-Control: private, no-store`. O proxy do frontend informou `BYPASS`. Isso descarta cache nessas chamadas observadas, mas não inspeciona uma sessão autenticada ou uma tentativa antiga.
+
 ## Autorizar outra conta
 
 `client_id` e `client_secret` identificam o aplicativo. A conta conectada é a que entra no Mercado Livre e autoriza esse aplicativo. Portanto, não é necessário trocar as chaves do Render para permitir que outra conta principal autorize o mesmo aplicativo.
