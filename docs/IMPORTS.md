@@ -32,7 +32,7 @@ O provider conserva a requisição e o bloqueio de duplo envio durante navegaç�
 
 ## Histórico disponível
 
-O backend ainda não expõe GET de importações. O frontend exibe **Importações desta
+O frontend exibe **Importações desta
 sessão**, formada somente pelos resultados reais recebidos após iniciar execuções
 na interface. Cada entrada identifica a plataforma, a conta, a data, o status e
 os cinco contadores. As mais recentes aparecem primeiro, identificadas por `id`.
@@ -41,13 +41,34 @@ Uma execução nova ou uma falha HTTP não apaga as entradas anteriores. A lista
 permanece ao navegar entre páginas; recarregar ou sair da sessão a limpa. Não é
 gravada em localStorage/sessionStorage e não representa o histórico completo
 persistido no banco. `importCapabilities.history=false` continua indicando que
-não há consulta remota do histórico. Uma futura leitura do banco exige um endpoint
-autenticado próprio, fora desta alteração de frontend.
+não há consulta remota do histórico completo de todas as plataformas. O novo GET
+`/imports` retorna apenas a última execução de cada conta ML ativa; GET
+`/imports/:id` acompanha uma execução ML autorizada.
 
 Resultados antigos sem metadados de plataforma continuam identificados como
-Mercado Livre, preservando o contrato anterior. A etapa de Importações não alterou
-rotas backend ou schema. A exibição dos clientes das duas plataformas está
+Mercado Livre, preservando o contrato anterior. A exibição dos clientes das duas plataformas está
 documentada em [CUSTOMERS.md](CUSTOMERS.md).
+
+## Sincronização automática Mercado Livre
+
+Depois de persistir OAuth, o backend agenda a primeira sincronização e redireciona
+para Contas Integradas. Padrão 90 dias, configurável no backend com
+`MERCADO_LIVRE_INITIAL_SYNC_DAYS`. Contas Integradas e Importações mostram
+progresso, contadores, resultado e botão para sincronizar novamente. O provider
+retoma pelo banco após reload, consulta a cada 3s enquanto PROCESSING e para ao
+concluir. Falhas de leitura são repetidas depois de 5s; sair da área autenticada
+aborta consultas pendentes. Não precisa deixar aberta a tela de conexão.
+
+Clientes são recarregados quando o progresso muda. Reconexão ou botão de
+sincronização usam o último intervalo automático totalmente bem-sucedido,
+com uma hora de sobreposição. Resultados parciais não avançam essa data.
+Importações manuais de período escolhido mantêm o contrato anterior.
+OAuth continua conectado mesmo quando a sincronização falha.
+
+Antes de publicar, aplicar a migration backend `20261006120000_add_mercadolivre_sync`.
+Queda/restart do backend interrompe processamento; sem heartbeat por dez minutos,
+uma leitura/nova tentativa marca ERROR e permite retry idempotente. Não existe
+fila externa para retomar automaticamente.
 
 ## Testes
 

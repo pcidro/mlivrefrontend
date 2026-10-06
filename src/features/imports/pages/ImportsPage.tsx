@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useMarketplaceAccounts } from '../../marketplace-accounts/hooks/useMarketplaceAccounts'
 import { useImports } from '../hooks/useImports'
 import { ImportResult } from '../components/ImportResult'
+import { MercadoLivreSyncStatus } from '../components/MercadoLivreSyncStatus'
 import { ImportHistory } from '../components/ImportHistory'
 import { importAccountLabel } from '../services/importPresentation'
 import { Card } from '../../../components/ui/Card'
@@ -49,6 +50,7 @@ export function ImportsPage() {
     </Card>
     {imports.processing && <Card className="import-progress" role="status"><span className="spinner" /><div><h2>Importando clientes...</h2><p>Consultando pedidos e notas fiscais. Aguarde o resultado.</p></div></Card>}
     {imports.error && <ErrorState message={imports.error} />}
+    <MercadoLivreSyncStatus accounts={accounts.data ?? []} />
     {imports.result && <ImportResult result={imports.result} />}
     <ImportHistory history={imports.history} />
   </div>

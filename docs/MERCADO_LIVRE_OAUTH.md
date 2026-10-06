@@ -99,13 +99,15 @@ Interpretação:
 
 | Resultado | Próximo passo |
 |---|---|
-| Local `invalid_grant`, Render `invalid_client` | Comparar o aplicativo e as variáveis efetivas do backend no Render, a versão publicada e o momento dos logs. É evidência de diferença entre ambientes; não informa sozinho qual variável está diferente. |
+| Local `invalid_grant`, Render `invalid_client` | Conferir primeiro se os testes usaram o mesmo aplicativo e o par vigente. Com IDs distintos, o teste de um aplicativo não valida o outro. Depois comparar as variáveis efetivas, a versão publicada e o momento dos logs. |
 | Ambos `invalid_grant` | A recusa do código fictício é esperada. Fazer uma nova autorização real e analisar seu log; o teste negativo não valida conta, permissões, PKCE, callback ou persistência. |
 | Ambos `invalid_client` | Conferir o par vigente do mesmo aplicativo e seu estado no painel. |
 | Sem `upstreamStatus` | Verificar comunicação, timeout ou configuração antes de atribuir o problema às chaves. |
 | `unauthorized_client` / `unauthorized_application` | Verificar permissões ou bloqueio do aplicativo. Esses códigos oficiais agora são preservados pelo diagnóstico. |
 
-Em 03/10/2026, o teste local com as credenciais configuradas retornou HTTP 400 `invalid_grant`. Uma chamada de controle com Secret propositalmente fictício retornou HTTP 400 `invalid_client`. Isso dá evidência de que a API distinguiu as credenciais locais do Secret inválido nesse teste. Não comprova que a configuração publicada é idêntica. Os logs fornecidos do Render retornaram `invalid_client` e não incluíram `credentialCheck`, presente no código local ainda não publicado.
+Em 03/10/2026, o primeiro teste local retornou HTTP 400 `invalid_grant`, e o controle com Secret fictício retornou `invalid_client`. Posteriormente foi confirmado que aquele teste usava um aplicativo diferente do aplicativo da cliente; portanto, não validava as credenciais atuais. Depois da atualização do `.env`, o teste local do aplicativo atual também retornou `invalid_client`, igual ao diagnóstico de inicialização e ao callback no Render. Os logs atuais já incluem `credentialCheck`, sem indícios de Secret malformado. Esses indicadores não comprovam o conteúdo ou a associação do Secret ao ID.
+
+Um controle adicional usando o Secret local atual com o ID anterior, apenas em memória, também retornou `invalid_client`. Isso não confirmou a hipótese de mistura com o Secret do aplicativo anterior. A falha atual é reproduzível diretamente na API, sem login no navegador e fora do Render. O próximo passo é verificar o par vigente no painel do aplicativo confirmado pela cliente; se ele corresponder exatamente à configuração e a rejeição continuar, levar o resultado ao suporte oficial de integradores. Não presumir erro de cópia, bloqueio, PKCE ou problema no código apenas pelo retorno `invalid_client`.
 
 Também foi detectado que o `.env` local utiliza o domínio do backend no callback, enquanto a configuração documentada usa o domínio do frontend. Conferir a URL efetiva do Render e a cadastrada no Mercado Livre. Essa divergência local merece ajuste separado, mas não comprova a causa do `invalid_client` de produção. Não alterar apenas um lado: a URL cadastrada e a enviada precisam corresponder exatamente.
 

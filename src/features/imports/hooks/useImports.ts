@@ -6,6 +6,11 @@ export interface ImportsContextValue {
   result: ImportSummary | null
   history: ImportSummary[]
   error: string
+  syncs: ImportSummary[]
+  syncError: string
+  syncStarting: boolean
+  sync(accountId: string): Promise<void>
+  refreshSyncs(): void
   start(input: ImportInput): Promise<void>
 }
 export const ImportsContext = createContext<ImportsContextValue | null>(null)

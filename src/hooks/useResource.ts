@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { errorMessage } from '../lib/api/apiClient'
 
-export function useResource<T>(load: (signal: AbortSignal) => Promise<T>) {
+export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, refreshKey: string | number = 0) {
   const [state, setState] = useState<{ data: T | null; loading: boolean; error: string }>({ data: null, loading: true, error: '' })
   const [revision, setRevision] = useState(0)
   useEffect(() => {
@@ -17,7 +17,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>) {
     }
     void run()
     return () => controller.abort()
-  }, [load, revision])
+  }, [load, revision, refreshKey])
   const reload = useCallback(() => setRevision((value) => value + 1), [])
   return { ...state, reload }
 }

@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button'
 import { Icon } from '../../../components/ui/Icon'
 import { EmptyState, ErrorState, Skeleton } from '../../../components/ui/States'
 import { useImports } from '../../imports/hooks/useImports'
+import { MercadoLivreSyncStatus } from '../../imports/components/MercadoLivreSyncStatus'
 
 export function MarketplaceAccountsPage() {
   const accounts = useMarketplaceAccounts({ includeMagalu: true })
@@ -19,16 +20,19 @@ export function MarketplaceAccountsPage() {
   const [connectionStatus] = useState(() => params.get('mercadolivre'))
   const [connectionError] = useState(() => mercadoLivreConnectionError(params.get('mercadolivre_error')))
   const [magaluStatus] = useState(() => params.get('magalu'))
+  const [syncStartFailed] = useState(() => params.has('sync_error'))
   const [connecting, setConnecting] = useState<MarketplaceAccount['platform'] | null>(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   useEffect(() => {
-    if (params.has('mercadolivre') || params.has('mercadolivre_error') || params.has('magalu')) {
+    if (params.has('mercadolivre') || params.has('mercadolivre_error') || params.has('magalu') || params.has('import_id') || params.has('sync_error')) {
       const next = new URLSearchParams(params)
       next.delete('mercadolivre')
       next.delete('mercadolivre_error')
       next.delete('magalu')
+      next.delete('import_id')
+      next.delete('sync_error')
       setParams(next, { replace: true })
     }
   }, [params, setParams])
@@ -59,6 +63,7 @@ export function MarketplaceAccountsPage() {
   }
   return <div className="page-stack"><div className="page-heading accounts-page-heading"><div><h1>Contas Integradas</h1><p>Conecte e gerencie suas contas do Mercado Livre e da Magalu.</p></div>{connectionButtons}</div>
     {connectionStatus === 'success' && <p className="notice notice-success" role="status">Conta do Mercado Livre conectada com sucesso.</p>}
+    {syncStartFailed && <p className="notice notice-warning" role="status">A conta foi conectada, mas não foi possível iniciar a importação. Use o botão de sincronização abaixo para tentar novamente.</p>}
     {connectionStatus === 'error' && <p className="notice notice-danger" role="alert">{connectionError}</p>}
     {magaluStatus === 'success' && <p className="notice notice-success" role="status">Conta Magalu conectada com sucesso.</p>}
     {magaluStatus === 'error' && <p className="notice notice-danger" role="alert">Não foi possível conectar a conta Magalu. Inicie uma nova conexão e conclua a autorização no mesmo navegador. Se o erro persistir, contate o responsável pelo sistema.</p>}
@@ -69,6 +74,8 @@ export function MarketplaceAccountsPage() {
         : accounts.data?.length ? <div className="accounts-grid">{accounts.data.map((account) => <AccountCard key={account.id} account={account} detailed busy={busy === account.id} disabled={Boolean(busy) || processing || Boolean(connecting)} onDisconnect={account.platform === 'MERCADO_LIVRE' ? () => void disconnect(account) : undefined} />)}</div>
           : <EmptyState icon="store" title="Nenhuma conta conectada" description="Conecte uma conta do Mercado Livre ou da Magalu para organizar seus clientes."
             action={connectionButtons} />}
-    </Card><p className="caption muted"><Icon name="lock" className="inline-icon" /> A autorização é feita no site de cada plataforma. Suas credenciais ficam protegidas.</p>
+    </Card>
+    <MercadoLivreSyncStatus accounts={accounts.data ?? []} />
+    <p className="caption muted"><Icon name="lock" className="inline-icon" /> A autorização é feita no site de cada plataforma. Suas credenciais ficam protegidas.</p>
   </div>
 }

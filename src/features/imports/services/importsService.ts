@@ -9,8 +9,17 @@ const endpoints: Record<MarketplaceAccount['platform'], string> = {
   MERCADO_LIVRE: '/imports/mercadolivre', MAGALU: '/imports/magalu',
 }
 
-export function createImportsService(client: Pick<typeof apiClient, 'post'> = apiClient) {
+export function createImportsService(client: Pick<typeof apiClient, 'post' | 'get'> = apiClient) {
   return {
+    latest(signal?: AbortSignal) {
+      return client.get<ImportSummary[]>('/imports', { signal, cache: 'no-store' })
+    },
+    get(id: string, signal?: AbortSignal) {
+      return client.get<ImportSummary>(`/imports/${encodeURIComponent(id)}`, { signal, cache: 'no-store' })
+    },
+    sync(marketplaceAccountId: string) {
+      return client.post<ImportSummary>('/imports/mercadolivre/sync', { marketplaceAccountId })
+    },
     async start(input: ImportInput): Promise<ImportSummary> {
       // Chamadas legadas sem plataforma continuam usando Mercado Livre.
       const platform = input.platform ?? 'MERCADO_LIVRE'

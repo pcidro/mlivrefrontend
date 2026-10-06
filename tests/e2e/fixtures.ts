@@ -39,6 +39,7 @@ export async function mockApi(page: Page, options: { authenticated?: boolean; em
     if (path === '/auth/login') { state.authenticated = true; return json(user) }
     if (path === '/auth/logout') { state.authenticated = false; return route.fulfill({ status: 204 }) }
     if (state.expired || !state.authenticated) return json({ error: 'Sessão expirada' }, 401)
+    if (path === '/imports' && request.method() === 'GET') return json([])
     if (path === '/marketplace-accounts' && request.method() === 'GET') {
       if (options.accountsReady) await options.accountsReady
       if (state.accountFailures > 0) { state.accountFailures--; return json({ error: 'Não foi possível carregar as contas integradas.' }, 503) }

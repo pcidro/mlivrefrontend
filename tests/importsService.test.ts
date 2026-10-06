@@ -69,3 +69,19 @@ test('falha HTTP mantém erro tipado sem inventar execução ou status', async (
   const service = createImportsService(createApiClient('/api', () => {}, async () => Response.json({ error: 'Serviço indisponível' }, { status: 503 })))
   await assert.rejects(service.start({ ...input, platform: 'MAGALU' }), error => error instanceof ApiError && error.status === 503)
 })
+
+test('consulta de status e nova sincronização usam sessão, sem cache e sem dados de terceiros no corpo', async () => {
+  const calls: { url: string; options: RequestInit }[] = []
+  const service = createImportsService(createApiClient('/api', () => {}, async (url, options) => {
+    calls.push({ url: String(url), options: options! })
+    return Response.json(String(url) === '/api/imports' ? [summary] : summary)
+  }))
+  assert.deepEqual(await service.latest(), [summary])
+  assert.deepEqual(await service.get('job-id'), summary)
+  assert.deepEqual(await service.sync('account-test'), summary)
+  assert.deepEqual(calls.map(call => call.url), ['/api/imports', '/api/imports/job-id', '/api/imports/mercadolivre/sync'])
+  assert.ok(calls.every(call => call.options.credentials === 'include'))
+  assert.equal(calls[0]?.options.cache, 'no-store')
+  assert.equal(calls[1]?.options.cache, 'no-store')
+  assert.deepEqual(JSON.parse(String(calls[2]?.options.body)), { marketplaceAccountId: 'account-test' })
+})
